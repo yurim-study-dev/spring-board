@@ -1,5 +1,6 @@
+/logs/
 application-secret.properties
-
+.history
 **/*.pem
 /uploads/
 /db/

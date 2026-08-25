@@ -18,4 +18,3 @@ yum install temurin-25-jdk -y
 # JAVA_HOME 환경 변수 등록
 echo 'export JAVA_HOME=/usr/lib/jvm/java-25-temurin-jdk' | tee -a /etc/profile.d/java.sh
 export JAVA_HOME=/usr/lib/jvm/java-25-temurin-jdk
-
