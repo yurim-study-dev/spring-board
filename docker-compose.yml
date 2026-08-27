@@ -1,0 +1,51 @@
+networks:
+  board-net:
+    driver: bridge
+
+volumes:
+  board-db-data:
+
+services:
+  board-app:
+    image: kilyong/spring-board:1.0
+    ports:
+      - "80:8080"
+    networks:
+      - board-net
+    container_name: board-app
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: board-app
+      SPRING_DATASOURCE_PASSWORD: Board123!
+      SPRING_SQL_INIT_MODE: always
+    depends_on:
+      board-db:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+#    restart: always
+
+
+  board-db:
+    image: mysql:9.7
+    networks:
+      - board-net
+    ports:
+      - "3306:3306"
+    container_name: board-db
+    environment:
+      MYSQL_DATABASE: board_db
+      MYSQL_USER: board-app
+      MYSQL_PASSWORD: Board123!
+      MYSQL_ROOT_PASSWORD: rootpass
+    healthcheck:
+      test: ["CMD-SHELL","mysqladmin ping -h localhost -u board-app -pBoard123! || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - board-db-data:/var/lib/mysql
+
+
+

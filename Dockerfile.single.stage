@@ -1,0 +1,32 @@
+# 1단계 Dockerfile
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+
+# 2단계 Dockerfile
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+
+# JAR 파일 복사
+COPY build/libs/*.jar spring-board.jar
+
+# 3단계 Dockerfile
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
+
+COPY build/libs/*.jar spring-board.jar
+
+# 4단계 최종 완성 Dockerfile
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
+
+COPY build/libs/*.jar spring-board.jar
+
+# 8080 포트 바인딩 명세 및 자바 앱 실행
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "spring-board.jar"]
