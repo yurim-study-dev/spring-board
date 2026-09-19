@@ -1,3 +1,6 @@
+docker/secrets/
+user_password.txt
+
 /logs/
 application-secret.properties
 .history
@@ -42,5 +45,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-.history

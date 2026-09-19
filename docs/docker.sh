@@ -1,3 +1,10 @@
+# 컨테이너가 구동중일 경우 삭제 후 다시 구동
+docker stop mydb
+docker stop board-web
+
+docker rm mydb
+docker rm board-web
+
 # MySql DB 컨테이너 구동
 docker run -d --name mydb --network my-net -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:9.7
 
@@ -13,18 +20,14 @@ cd ~
 java -jar board.jar
 
 
+# 프로젝트를 도커 이미지로 빌드 (Gradle의 bootBuildImage)
+./gradlew bootBuildImage --imageName=kilyong/spring-board:1.0
+
 # 스프링 프로젝트 빌드
 ./gradlew clean bootJar
 
-# 프로젝트를 도커 이미지로 빌드
-./gradlew bootBuildImage --imageName=yurimweb/spring-board:1.0
-
-
-# jar 파일 생성  -   (bootJar 더블클릭으로 생성해도 됨) - 인텔리제이 로컬 터미널
-./gradlew clean bootJar
-
-# 이미지 생성 - 인텔리제이 로컬 터미널
-docker build -t yurimweb/spring-board:1.0 .
+# 프로젝트를 도커 이미지로 빌드 (Dockerfile)
+docker build -t kilyong/spring-board:1.0 .
 
 
 # spring-board 배포
@@ -42,7 +45,7 @@ docker network create myapp-net
 docker volume create spring-board-db-data
 
 # 4. MySQL 컨테이너 먼저 실행
-docker run --name db-server --network myapp-net -p 3306:3306 \
+docker run -d --name db-server --network myapp-net -p 3306:3306 \
   -v spring-board-db-data:/var/lib/mysql \
   -e MYSQL_DATABASE=board_db \
   -e MYSQL_ROOT_PASSWORD=root \
@@ -52,28 +55,18 @@ docker run --name db-server --network myapp-net -p 3306:3306 \
 
 # (ready for connections 문구가 뜨면 Ctrl+C로 빠져나오기, 안되면 엔터 ~ . 순서로 입력하면 SSH 연결을 끊을 수 있음)
 
-# uploads,logs 폴더생성
-mkdir -p uploads logs
 
+# uploads, logs 폴더 생성
+mkdir -p uplodas logs
 
 # 5. 스프링 부트 컨테이너 실행
-#MSYS_NO_PATHCONV=1 docker run -d --name spring-board --network myapp-net -p 80:8080 \
-#-v "${PWD}\uploads:\app\uploads" \
-#-v "${PWD}\logs:\app\logs" \
-#  -e SPRING_DATASOURCE_USERNAME=board-app \
-#  -e SPRING_DATASOURCE_PASSWORD=Board123! \
-#    -e SPRING_SQL_INIT_MODE=never \
-#  yurimweb/spring-board:1.0
-
-
 MSYS_NO_PATHCONV=1 docker run -d --name spring-board --network myapp-net -p 80:8080 \
   -v "${PWD}/uploads:/app/uploads" \
   -v "${PWD}/logs:/app/logs" \
   -e SPRING_DATASOURCE_USERNAME=board-app \
   -e SPRING_DATASOURCE_PASSWORD=Board123! \
   -e SPRING_SQL_INIT_MODE=never \
-  yurimweb/spring-board:1.0
-
+  kilyong/spring-board:1.0
 
 # 테스트 완료된 spring-board 이미지를 운영 서버에 배포하기 위해서 docker hub에 업로드
 # 로그인
@@ -81,3 +74,6 @@ docker login
 
 # docker hub에 이미지 업로드
 docker push kilyong/spring-board:1.0
+
+
+

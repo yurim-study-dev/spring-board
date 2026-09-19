@@ -8,6 +8,7 @@ docker rmi -f $(docker images -q) 2>/dev/null || true
 docker volume rm -f $(docker volume ls -q) 2>/dev/null || true
 docker network rm -f $(docker network ls -q) 2>/dev/null || true
 
+
 # Spring Board 애플리케이션 전용 사용자 정의 네트워크 생성
 docker network create board-net
 
@@ -28,12 +29,12 @@ docker run -d --name board-db \
   -e MYSQL_ROOT_PASSWORD=rootpass \
   mysql:9.7
 
-
 # 1단계 이미지 빌드
 docker build -t board-app-step1 .
 
 # 컨테이너 구동 후 작업 디렉터리(/app) 생성 상태 확인
 docker run --rm board-app-step1 pwd
+
 
 # 로컬 Gradle 빌드 실행 (JAR 파일 생성)
 ./gradlew clean bootJar
@@ -44,11 +45,13 @@ docker build -t board-app-step2 .
 # 컨테이너 내부에 복사한 파일 존재 여부 확인
 docker run --rm board-app-step2 ls -la //app
 
+
 # 3단계 이미지 빌드
 docker build -t board-app-step3 .
 
 # 컨테이너 내부 주입된 환경 변수 설정값 확인
 docker run --rm board-app-step3 printenv SPRING_PROFILES_ACTIVE
+
 
 # 4단계 spring-board 이미지 빌드
 docker build -t spring-board:1.1.0 .

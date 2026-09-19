@@ -35,3 +35,4 @@ aws ec2 stop-instances --instance-ids i-0c8cc5e4a486cda04
 
 # 인스턴스 시작
 aws ec2 start-instances --instance-ids i-0c8cc5e4a486cda04
+

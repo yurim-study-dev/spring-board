@@ -4,14 +4,9 @@ scp -i "first-key.pem" build/libs/spring-board-0.0.1-SNAPSHOT.jar ec2-user@54.24
 
 # EC2에 SSH로 원격 접속
 ssh -i "first-key.pem" ec2-user@54.248.244.35
-ssh -i "first-key.pem" ec2-user@3.38.193.64
-
 
 # 서버 지문 변경으로 인해 접속이 되지 않을 경우 이전 서버의 지문을 삭제
 ssh-keygen -R 54.248.244.35
-ssh-keygen -R 3.38.193.64
-
-
 
 ####### EC2에서 실행 #######
 # 자바 서버 실행

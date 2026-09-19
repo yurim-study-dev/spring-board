@@ -64,7 +64,6 @@ public class BoardController {
             realIp, forwardedFor, host, request.getRemoteAddr());
   }
 
-
   /**
    * 게시글 목록 및 검색, 페이징 조회 요청을 처리합니다.
    *
@@ -83,7 +82,7 @@ public class BoardController {
                              @RequestParam(value = "keyword", required = false) String keyword,
                              Model model){
 
-    //Nginx 프로시 요청 헤더 출력
+    // Nginx 프록시 요청 헤더 출력
     logProxyHeaders(request);
 
     PageDto<PostDto> pageResponse = postService.searchPosts(type, keyword, page, size);

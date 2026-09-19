@@ -1,0 +1,11 @@
+# Docker Compose 런타임 외부 주입 전용 설정 (도커 환경 DB 접속 및 시크릿 덮어쓰기)
+spring:
+  config:
+    # 도커 시크릿 마운트 디렉터리(/run/secrets/) 내의 파일들을 스캔하여
+    # 파일명을 프로퍼티 키로, 파일 내용을 프로퍼티 값으로 자동 매핑하는 설정
+    import: "configtree:/run/secrets/"
+  datasource:
+    url: jdbc:mysql://board-db:3306/board_db
+    username: board-app
+    # configtree에 의해 /run/secrets/db-pwd 파일 내용이 동적으로 할당되는 프로퍼티 참조
+    password: "${db-pwd}"

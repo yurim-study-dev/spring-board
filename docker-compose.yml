@@ -1,51 +1,54 @@
+# 1. 사용자 정의 브리지 네트워크 정의
 networks:
   board-net:
     driver: bridge
 
+# 2. DB 데이터 영속화 전용 Named Volume 정의
 volumes:
   board-db-data:
 
+# 3. 다중 컨테이너 서비스 명세
 services:
+  # 게시판 웹 애플리케이션 서비스
   board-app:
     image: kilyong/spring-board:1.0
+    container_name: board-app
     ports:
-      - "80:8080"
+      - "80:8080" # 호스트 80 포트를 컨테이너 8080 포트에 포트 바인딩
     networks:
       - board-net
-    container_name: board-app
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://board-db:3306/board_db
       SPRING_DATASOURCE_USERNAME: board-app
       SPRING_DATASOURCE_PASSWORD: Board123!
-      SPRING_SQL_INIT_MODE: always
+      SPRING_SQL_INIT_MODE: always # DB 초기화 스크립트 실행 여부
     depends_on:
       board-db:
-        condition: service_healthy
+        condition: service_healthy # MySQL DB 헬스체크 통과(Healthy) 상태 판정 후 구동
     volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-#    restart: always
+      - ./uploads:/app/uploads # 호스트 첨부파일 디렉터리 바인드 마운트
+      - ./logs:/app/logs # 호스트 시스템 로그 디렉터리 바인드 마운트
 
-
+  # MySQL 데이터베이스 서비스
   board-db:
     image: mysql:9.7
+    container_name: board-db
     networks:
       - board-net
     ports:
-      - "3306:3306"
-    container_name: board-db
+      - "3306:3306" # 호스트 DB 접속 포트 바인딩 (외부 직접 접속 허용)
+    #    expose:
+    #      - "3306" # 동일 네트워크 내부 컨테이너 간에만 통신 포트 개방 (호스트 포트 노출 차단)
     environment:
       MYSQL_DATABASE: board_db
       MYSQL_USER: board-app
       MYSQL_PASSWORD: Board123!
-      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_ROOT_PASSWORD: Board123!
     healthcheck:
-      test: ["CMD-SHELL","mysqladmin ping -h localhost -u board-app -pBoard123! || exit 1"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD || exit 1"]
+      interval: 3s # 3초 간격 헬스체크 검증
+      timeout: 3s # 3초 응답 타임아웃
+      retries: 10 # 최대 10회 재시도 실패 시 Unhealthy 판정
     volumes:
-      - board-db-data:/var/lib/mysql
-
-
+      - board-db-data:/var/lib/mysql # DB 데이터 영속성 보존용 Named Volume 마운트
 

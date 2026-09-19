@@ -1,0 +1,112 @@
+# 1. 외부 주입 구성 파일 명세 정의
+configs:
+  app-config:
+    file: ./configs/app.yml # Spring Boot 외부주입 설정 파일 경로
+  db-config:
+    file: ./configs/my.cnf  # MySQL 서버 커스텀 설정 파일 경로
+  lb-config:
+    file: ./configs/nginx.conf # Nginx 로드밸런서 트래픽 분산 설정 파일 경로
+
+# 2. 인메모리 비밀 정보(Secret) 명세 정의
+secrets:
+  db-password:
+    file: ./secrets/user_password.txt # DB 계정 패스워드가 저장된 호스트 파일 경로
+
+# 3. 사용자 정의 브리지 가상 네트워크 정의
+networks:
+  board-net:
+    name: board-net
+    driver: bridge
+
+# 4. DB 데이터 영속화 전용 Named Volume 정의
+volumes:
+  board-db-data:
+    name: board-db-data # DB 컨테이너 삭제 시에도 영구 보존되는 데이터 볼륨
+
+# 5. 다중 컨테이너 서비스 오케스트레이션 명세
+services:
+  # Nginx 웹 로드밸런서 서비스
+  web-lb:
+    image: nginx:1.31-alpine
+    container_name: web-lb
+    ports:
+      - "80:80" # 외부 HTTP 포트 바인딩
+    networks:
+      - board-net
+    configs:
+      - source: lb-config
+        target: /etc/nginx/nginx.conf # Nginx 컨테이너 내부 설정 경로로 주입 (configs)
+    depends_on:
+      board-app:
+        condition: service_healthy
+
+  # WAS 단일 통합 서비스 추가
+  board-app:
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - board-net
+    configs:
+      - source: app-config
+        target: /app/config/application.yml
+    secrets:
+      - db-password
+    volumes:
+      - ../uploads:/app/uploads # 게시판 사용자 파일 업로드 영속 보존 (공유)
+      - ../logs:/app/logs       # 로그 파일
+    environment:
+#      SPRING_SQL_INIT_MODE: always
+      SPRING_DATA_REDIS_HOST: redis-cache
+      SPRING_DATA_REDIS_PORT: 6379
+      LOGGING_FILE_NAME: /app/logs/board-app-$${HOSTNAME}.log # $${HOSTNAME}: 도커가 복제본 컨테이너에 자동 주입하는 고유 ID를 활용한 파일명 분리
+    deploy:
+      replicas: 2 # WAS 인스턴스 2대 동적 이중화 스케일링
+    depends_on:
+      board-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+
+  # MySQL 데이터베이스 서비스
+  board-db:
+    image: mysql:9.7
+    container_name: board-db
+    ports:
+      - "3306:3306"
+    networks:
+      - board-net
+    configs:
+      - source: db-config
+        target: /etc/mysql/conf.d/my.cnf # MySQL 커스텀 설정 읽기 전용 마운트
+    secrets:
+      - db-password
+    environment:
+      MYSQL_DATABASE: board_db
+      MYSQL_USER: board-app
+      # 시크릿 마운트 파일에서 패스워드 텍스트를 파싱하여 DB 계정 자동 생성
+      MYSQL_PASSWORD_FILE: /run/secrets/db-password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db-password
+    healthcheck:
+      # 시크릿 파일 패스워드를 cat하여 mysqladmin ping 헬스체크 검증 수행
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u $MYSQL_USER -p$$(cat /run/secrets/db-password) || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - board-db-data:/var/lib/mysql # 영속성 데이터 볼륨 마운트
+
+  # Redis 중앙 세션 스토어 서비스 추가
+  redis-cache:
+    image: redis:7.4-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - board-net

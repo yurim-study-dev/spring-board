@@ -44,7 +44,7 @@ public class CookieController {
     public String viewCookie(@CookieValue(name = "memberId", required = false) Integer memberId,
                              @CookieValue(name = "username", required = false) String username){
         if(memberId == null){
-            return "<p>memberId 쿠키가 없습니다.</p>";
+            return "<p>memberId 쿠키가 없습니다..</p>";
         }
 
         MemberDto memberInfo = memberService.getMember(memberId);

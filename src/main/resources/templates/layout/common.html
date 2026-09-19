@@ -10,7 +10,10 @@
     <div class="container">
         <th:block th:fragment="nav-header(title)">
             <div class="header-top">
-                <div class="service-logo"><a th:href="@{/post/list}">사자샘터</a></div>
+                <div class="service-logo">
+                    <a th:href="@{/post/list}">사자샘터</a>
+                    <span class="server-badge" style="font-size: 0.85rem; color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: bold;" th:text="${'응답 서버 - [' + serverName + ']'}">[WAS]</span>
+                </div>
                 <h1 class="page-title" th:text="${title}">게시글 목록</h1>
                 <div class="user-nav">
                     <th:block th:if="${session.loginMember == null}">

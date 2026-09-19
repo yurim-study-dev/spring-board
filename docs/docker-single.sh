@@ -36,61 +36,60 @@ docker run -d --name board-db \
   -e MYSQL_ROOT_PASSWORD=rootpass \
   mysql:9.7
 
-  # 9. Gradle 프로젝트 빌드 (단일 실행용 JAR 파일 생성)
-  ./gradlew clean bootJar
+# 9. Gradle 프로젝트 빌드 (단일 실행용 JAR 파일 생성)
+./gradlew clean bootJar
 
-  # 10. 시맨틱 버저닝 적용 다중 태그 이미지 빌드 (1.0.0, 1.0, 1, latest 동시 지정)
-  docker build \
-    -t yurimweb/spring-board:1.0.0 \
-    -t yurimweb/spring-board:1.0 \
-    -t yurimweb/spring-board:1 \
-    -t yurimweb/spring-board:latest .
+# 10. 시맨틱 버저닝 적용 다중 태그 이미지 빌드 (1.0.0, 1.0, 1, latest 동시 지정)
+docker build \
+  -t kilyong/spring-board:1.0.0 \
+  -t kilyong/spring-board:1.0 \
+  -t kilyong/spring-board:1 \
+  -t kilyong/spring-board:latest .
 
-  # 11. Docker Hub 인증 로그인
-  docker login
+# 11. Docker Hub 인증 로그인
+docker login
 
-  # 12. 빌드된 다중 태그 이미지를 Docker Hub 원격 레지스트리에 일괄 업로드
-  docker push --all-tags yurimweb/spring-board
+# 12. 빌드된 다중 태그 이미지를 Docker Hub 원격 레지스트리에 일괄 업로드
+docker push --all-tags kilyong/spring-board
 
+# 13. Docker Hub 원격 레지스트리 다운로드 연동 테스트를 위해 로컬 빌드 이미지 완전 삭제
+docker rmi kilyong/spring-board:1.0.0 kilyong/spring-board:1.0 kilyong/spring-board:1 kilyong/spring-board:latest
 
-  # 13. Docker Hub 원격 레지스트리 다운로드 연동 테스트를 위해 로컬 빌드 이미지 완전 삭제
-  docker rmi yurimweb/spring-board:1.0.0 yurimweb/spring-board:1.0 yurimweb/spring-board:1 yurimweb/spring-board:latest
+# 14. Docker Hub에서 원격 이미지를 자동 다운로드(pull)하여 Spring Board 애플리케이션 컨테이너 배포, Bind Mounts 및 포트 바인딩(80:8080)
+MSYS_NO_PATHCONV=1 docker run -d --name board-app \
+  --network board-net \
+  -p 80:8080 \
+  -v "${PWD}/uploads:/app/uploads" \
+  -v "${PWD}/logs:/app/logs" \
+  -e SPRING_DATASOURCE_URL="jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true" \
+  -e SPRING_DATASOURCE_USERNAME=board-app \
+  -e SPRING_DATASOURCE_PASSWORD=Board123! \
+  -e SPRING_SQL_INIT_MODE=always \
+  kilyong/spring-board:1.0
 
-  # 14. Docker Hub에서 원격 이미지를 자동 다운로드(pull)하여 Spring Board 애플리케이션 컨테이너 배포, Bind Mounts 및 포트 바인딩(80:8080)
-  MSYS_NO_PATHCONV=1 docker run -d --name board-app \
-    --network board-net \
-    -p 80:8080 \
-    -v "${PWD}/uploads:/app/uploads" \
-    -v "${PWD}/logs:/app/logs" \
-    -e SPRING_DATASOURCE_URL="jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true" \
-    -e SPRING_DATASOURCE_USERNAME=board-app \
-    -e SPRING_DATASOURCE_PASSWORD=Board123! \
-    -e SPRING_SQL_INIT_MODE=always \
-    yurimweb/spring-board:1.0
+# 15. 실행 중인 컨테이너 정지 및 완전히 삭제
+docker stop board-app board-db
+docker rm board-app board-db
 
+# 16. DB 컨테이너 재구동 (동일 Named Volume 마운트)
+MSYS_NO_PATHCONV=1 docker run -d --name board-db \
+  --network board-net \
+  -p 3306:3306 \
+  -v board-db-data:/var/lib/mysql \
+  -e MYSQL_DATABASE=board_db \
+  -e MYSQL_USER=board-app \
+  -e MYSQL_PASSWORD=Board123! \
+  -e MYSQL_ROOT_PASSWORD=rootpass \
+  mysql:9.7
 
-    # 15. 실행 중인 컨테이너 정지 및 완전히 삭제
-    docker stop board-app board-db
-    docker rm board-app board-db
-
-    # 16. DB 컨테이너 재구동 (동일 Named Volume 마운트)
-    MSYS_NO_PATHCONV=1 docker run -d --name board-db \
-      --network board-net \
-      -p 3306:3306 \
-      -v board-db-data:/var/lib/mysql \
-      -e MYSQL_DATABASE=board_db \
-      -e MYSQL_USER=board-app \
-      -e MYSQL_PASSWORD=Board123! \
-      -e MYSQL_ROOT_PASSWORD=rootpass \
-      mysql:9.7
-
-    # 17. Spring Board 컨테이너 재구동 (동일 Bind Mounts 마운트, 기존 DB 데이터 보존을 위해 -e SPRING_SQL_INIT_MODE=always 환경변수는 제거)
-    MSYS_NO_PATHCONV=1 docker run -d --name board-app \
-      --network board-net \
-      -p 80:8080 \
-      -v "${PWD}/uploads:/app/uploads" \
-      -v "${PWD}/logs:/app/logs" \
-      -e SPRING_DATASOURCE_URL="jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true" \
-      -e SPRING_DATASOURCE_USERNAME=board-app \
-      -e SPRING_DATASOURCE_PASSWORD=Board123! \
-      yurimweb/spring-board:1.0
+# 17. Spring Board 컨테이너 재구동 (동일 Bind Mounts 마운트, 기존 DB 데이터 보존을 위해 -e SPRING_SQL_INIT_MODE=always 환경변수는 제거)
+MSYS_NO_PATHCONV=1 docker run -d --name board-app \
+  --network board-net \
+  -p 80:8080 \
+  -v "${PWD}/uploads:/app/uploads" \
+  -v "${PWD}/logs:/app/logs" \
+  -e SPRING_DATASOURCE_URL="jdbc:mysql://board-db:3306/board_db?useSSL=false&allowPublicKeyRetrieval=true" \
+  -e SPRING_DATASOURCE_USERNAME=board-app \
+  -e SPRING_DATASOURCE_PASSWORD=Board123! \
+  kilyong/spring-board:1.0
+  
